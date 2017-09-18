@@ -4,7 +4,7 @@ const Template = require('../src/template');
 const path = require('path');
 
 const originalFields = {
-  passTypeIdentifier: 'com.example.passbook',
+  passTypeIdentifier: 'com.fastlane.flomio',
 };
 
 describe('Template', () => {
@@ -14,10 +14,10 @@ describe('Template', () => {
 
   test('fields', () => {
     const templ = new Template('coupon', originalFields);
-    expect(templ.passTypeIdentifier()).toBe('com.example.passbook');
+    expect(templ.passTypeIdentifier()).toBe('com.fastlane.flomio');
     templ.passTypeIdentifier('com.byaka.buka');
     expect(templ.passTypeIdentifier()).toBe('com.byaka.buka');
-    expect(originalFields.passTypeIdentifier).toBe('com.example.passbook');
+    expect(originalFields.passTypeIdentifier).toBe('com.fastlane.flomio');
 
     // should not change when original object changes'
     originalFields.passTypeIdentifier = 'com.example.somethingelse';
@@ -56,7 +56,7 @@ describe('Template', () => {
     expect(templ.images.logo2x).toBeDefined();
 
     const templ2 = await Template.load(
-      path.resolve(__dirname, './resources/passes/Event.pass'),
+      path.resolve(__dirname, './resources/passes/Event.pass')
     );
     expect(templ2.teamIdentifier()).toBe('A93A5CM278');
     expect(templ2.images.thumbnail).toBeDefined();
@@ -65,7 +65,7 @@ describe('Template', () => {
   /*
   test('push updates', async () => {
     const template = new Template('coupon', {
-      passTypeIdentifier: 'pass.com.example.passbook',
+      passTypeIdentifier: 'pass.com.fastlane.flomio',
       teamIdentifier: 'MXL',
       labelColor: 'red',
     });

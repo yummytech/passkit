@@ -4,13 +4,14 @@
 
 'use strict';
 
-const { URL } = require('url');
+const URL = require('url-parse');
 const { stat, readFile } = require('fs');
 const path = require('path');
-const { promisify } = require('util');
+const promisify = require('es6-promisify');
 const { join } = require('path');
 const colorString = require('color-string');
 const apn = require('@destinationstransfers/apn');
+const entries = require('object.entries');
 
 const PassImages = require('./lib/images');
 const Pass = require('./pass');
@@ -32,7 +33,7 @@ class Template {
     this.fields = {};
     // we will set all fields via class setters, as in the future we will implement strict validators
     // values validation: https://developer.apple.com/library/content/documentation/UserExperience/Reference/PassKit_Bundle/Chapters/TopLevel.html
-    Object.entries(fields).forEach(([field, value]) => {
+    entries(fields).forEach(([field, value]) => {
       if (typeof this[field] === 'function') this[field](value);
     });
 

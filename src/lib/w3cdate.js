@@ -1,5 +1,7 @@
 'use strict';
 
+var padStart = require('string.prototype.padstart');
+
 /**
  * Checks if given string is a valid W3C date representation
  * 
@@ -26,21 +28,18 @@ function getW3CDateString(value) {
   if (typeof value !== 'string' && !(value instanceof Date))
     throw new Error('Argument must be either a string or Date object');
   if (isValidW3CDateString(value)) return value;
-
   const date = value instanceof Date ? value : new Date(value);
   if (!isFinite(date)) throw new Error('Invalid date value!');
   // creating W3C date (we will always do without seconds)
-  const month = (1 + date.getMonth()).toFixed().padStart(2, '0');
-  const day = date.getDate().toFixed().padStart(2, '0');
-  const hours = date.getHours().toFixed().padStart(2, '0');
-  const minutes = date.getMinutes().toFixed().padStart(2, '0');
+  const month = padStart((1 + date.getMonth()).toFixed(), 2, '0');
+  const day = padStart(date.getDate().toFixed(), 2, '0');
+  const hours = padStart(date.getHours().toFixed(), 2, '0');
+  const minutes = padStart(date.getMinutes().toFixed(), 2, '0');
   const offset = -date.getTimezoneOffset();
-  const offsetHours = Math.abs(Math.floor(offset / 60))
-    .toFixed()
-    .padStart(2, '0');
-  const offsetMinutes = (Math.abs(offset) - offsetHours * 60)
-    .toFixed()
-    .padStart(2, '0');
+  const offsetHours = padStart(Math.abs(Math.floor(offset / 60))
+    .toFixed() , 2, '0');
+  const offsetMinutes = padStart((Math.abs(offset) - offsetHours * 60)
+    .toFixed(), 2, '0');
   const offsetSign = offset < 0 ? '-' : '+';
   return `${date.getFullYear()}-${month}-${day}T${hours}:${minutes}${offsetSign}${offsetHours}:${offsetMinutes}`;
 }

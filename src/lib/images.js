@@ -5,7 +5,7 @@
 'use strict';
 
 const { stat, readdir } = require('fs');
-const { promisify } = require('util');
+const promisify = require('es6-promisify');
 const { basename, extname, resolve } = require('path');
 
 const readdirAsync = promisify(readdir);

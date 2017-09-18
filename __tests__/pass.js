@@ -41,7 +41,7 @@ function unzip(zipFile, filename) {
 }
 
 const template = new Template('coupon', {
-  passTypeIdentifier: 'pass.com.example.passbook',
+  passTypeIdentifier: 'pass.com.fastlane.flomio',
   teamIdentifier: 'MXL',
   labelColor: 'red',
 });
@@ -58,7 +58,7 @@ describe('Pass', () => {
     const pass = template.createPass();
 
     // should copy template fields
-    expect(pass.fields.passTypeIdentifier).toBe('pass.com.example.passbook');
+    expect(pass.fields.passTypeIdentifier).toBe('pass.com.fastlane.flomio');
 
     // should start with no images
     expect(pass.images.map.size).toBe(0);
@@ -224,7 +224,7 @@ describe('generated', () => {
     const res = JSON.parse(await unzip('/tmp/pass.pkpass', 'pass.json'));
 
     expect(res).toMatchObject({
-      passTypeIdentifier: 'pass.com.example.passbook',
+      passTypeIdentifier: 'pass.com.fastlane.flomio',
       teamIdentifier: 'MXL',
       serialNumber: '123456',
       organizationName: 'Acme flowers',

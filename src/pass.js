@@ -5,6 +5,8 @@
 const { EventEmitter } = require('events');
 const Path = require('path');
 const { PassThrough } = require('stream');
+const entries = require('object.entries');
+const values = require('object.values');
 
 const Zip = require('./lib/zip');
 const PassImages = require('./lib/images');
@@ -22,7 +24,7 @@ const {
   PASS_MIME_TYPE,
 } = require('./constants');
 
-const REQUIRED_IMAGES = Object.entries(IMAGES)
+const REQUIRED_IMAGES = entries(IMAGES)
   .filter(([, { required }]) => required)
   .map(([imageType]) => imageType);
 
@@ -56,7 +58,7 @@ class Pass extends EventEmitter {
     //
     //   pass.description("Unbelievable discount");
     //   console.log(pass.description());
-    Object.entries(TOP_LEVEL_FIELDS).forEach(([key, { type }]) => {
+    entries(TOP_LEVEL_FIELDS).forEach(([key, { type }]) => {
       if (typeof this[key] !== 'function')
         this[key] = v => {
         if (arguments) { // eslint-disable-line
@@ -93,7 +95,7 @@ class Pass extends EventEmitter {
       // only allowed at boardingPass
       if (this.template.style !== 'boardingPass')
         throw new Error('transitType field is only allowed at boarding passes');
-      if (!Object.values(TRANSIT).includes(v))
+      if (!values(TRANSIT).includes(v))
         throw new Error(`Unknown value ${v} for transit type`);
       this.structure.transitType = v;
       return this;
@@ -275,7 +277,7 @@ class Pass extends EventEmitter {
     // map, escaping the " symbol
     this.localizations[lang] =
       (lang in this.localizations ? `${this.localizations[lang]}\n` : '') +
-      Object.entries(values)
+      entries(values)
         .map(
           ([originalStr, translatedStr]) =>
             `"${originalStr}" = "${translatedStr.replace(/"/g, '\\"')}";`,
@@ -285,7 +287,7 @@ class Pass extends EventEmitter {
 
   // Validate pass, throws error if missing a mandatory top-level field or image.
   validate() {
-    Object.entries(TOP_LEVEL_FIELDS).some(([field, { required }]) => {
+    entries(TOP_LEVEL_FIELDS).some(([field, { required }]) => {
       if (required && !(field in this.fields))
         throw new Error(`Missing field ${field}`);
       return false;
@@ -405,7 +407,7 @@ class Pass extends EventEmitter {
     addFile('pass.json').end(passJson, 'utf8');
 
     // Localization
-    Object.entries(this.localizations).forEach(([lang, strings]) => {
+    entries(this.localizations).forEach(([lang, strings]) => {
       addFile(`${lang}.lproj/pass.strings`).end(Buffer.from(strings), 'utf-16');
     });
 
