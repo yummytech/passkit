@@ -3,14 +3,14 @@
  */
 /* eslint-disable no-underscore-dangle, no-bitwise */
 
-'use strict';
+'use strict'
 
-const { Stream } = require('stream');
-const { createDeflateRaw } = require('zlib');
-const { getTimePart, getDatePart } = require('./get-part-time');
+import * as stream from 'stream'
+import { createDeflateRaw } from 'zlib'
+import { getTimePart, getDatePart } from './get-part-time'
 
-// const debug = console.log;
-const debug = () => {};
+const debug = console.log
+// const debug = () => {}
 
 // prettier-ignore
 const CRC32 = [0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
@@ -55,198 +55,196 @@ const CRC32 = [0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706
   0x40DF0B66, 0x37D83BF0, 0xA9BCAE53, 0xDEBB9EC5, 0x47B2CF7F, 0x30B5FFE9,
   0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605, 0xCDD70693,
   0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94,
-  0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D];
+  0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D]
 
 // Creates a new Zip file.
 //
 // zip      - Zip object
 // filename - Filename
 // modified - Modified date (optional)
-class File extends Stream {
-  constructor(zip, filename, modified) {
-    super();
-    this.zip = zip;
-    this.filename = filename;
-    this.modified = modified || new Date();
+export class File extends stream {
+  constructor (zip, filename, modified) {
+    super()
+    this.zip = zip
+    this.filename = filename
+    this.modified = modified || new Date()
     // True while file is writeable (end/destroy change this)
-    this.writable = true;
+    this.writable = true
     // We use this to hold any buffer if this is not the active file
-    this._buffers = [];
+    this._buffers = []
     // Make sure we only write header once.
-    this._wroteHeader = false;
+    this._wroteHeader = false
     // True if file fully written out; distinct from fully read (writable = false)
-    this._done = false;
+    this._done = false
     // Offset of file within the stream
-    this._offset = 0;
-    this._crc = 0 ^ -1;
-    this._uncompressedLength = 0;
-    this._compressedLength = 0;
+    this._offset = 0
+    this._crc = 0 ^ -1
+    this._uncompressedLength = 0
+    this._compressedLength = 0
 
     // Write to _deflate, count data size before passing to output.
-    this._deflate = createDeflateRaw();
+    this._deflate = createDeflateRaw()
     this._deflate.on('data', buffer => {
-      this._compressedLength += buffer.length;
-      zip._writeBuffer(buffer);
-    });
+      this._compressedLength += buffer.length
+      zip._writeBuffer(buffer)
+    })
     this._deflate.on('end', buffer => {
-      this._doneWritingFile();
-    });
+      this._doneWritingFile()
+    })
 
-    Object.preventExtensions(this);
+    Object.preventExtensions(this)
   }
 
   /**
    * Writeable stream output
-   * 
-   * @param {Buffer} buffer 
-   * @param {string} encoding 
+   *
+   * @param {Buffer} buffer
+   * @param {string} encoding
    * @returns {boolean}
    * @memberof File
    */
-  write(buffer, encoding = 'utf8') {
-    debug('Writing', this.filename);
-    if (!this.writable) throw new Error('This file no longer open for writing');
+  write (buffer, encoding = 'utf8') {
+    debug('Writing', this.filename)
+    if (!this.writable) throw new Error('This file no longer open for writing')
     const buf =
       typeof buffer === 'string' || buffer instanceof String
         ? Buffer.from(buffer, encoding)
-        : buffer;
+        : buffer
 
     // crc-32
     for (let i = 0; i < buf.length; i++) {
-      const offset = (this._crc ^ buf[i]) & 0xff;
-      this._crc = (this._crc >>> 8) ^ CRC32[offset];
+      const offset = (this._crc ^ buf[i]) & 0xff
+      this._crc = (this._crc >>> 8) ^ CRC32[offset]
     }
-    this._uncompressedLength += buf.length;
-    this._buffers.push(buf);
+    this._uncompressedLength += buf.length
+    this._buffers.push(buf)
 
-    if (this.zip.isActive(this)) this._flush();
+    if (this.zip.isActive(this)) this._flush()
     // Because we buffer we always return true.
-    return true;
+    return true
   }
 
   /**
    * Writeable stream end
-   * 
-   * @param {Buffer} buffer 
-   * @param {string} encoding 
+   *
+   * @param {Buffer} buffer
+   * @param {string} encoding
    * @memberof File
    */
-  end(buffer, encoding) {
-    if (!this.writable) throw new Error('This file no longer open for writing');
-    if (buffer) this.write(buffer, encoding);
+  end (buffer, encoding) {
+    if (!this.writable) throw new Error('This file no longer open for writing')
+    if (buffer) this.write(buffer, encoding)
 
-    this.writable = false;
-    if (this.zip.isActive(this)) this._flush();
+    this.writable = false
+    if (this.zip.isActive(this)) this._flush()
   }
 
   /**
    * Writeable stream destroy
-   * 
+   *
    * @memberof File
    */
-  destroy() {
-    this.writable = false;
+  destroy () {
+    this.writable = false
   }
 
   /**
    * Write local file header.
-   * 
+   *
    * @memberof File
    */
-  _writeLocalFileHeader() {
-    debug('Started writing', this.filename);
-    this._offset = this.zip._offset;
-    const filename = Buffer.from(this.filename, 'utf-8');
-    const buffer = Buffer.alloc(30 + filename.length);
+  _writeLocalFileHeader () {
+    debug('Started writing', this.filename)
+    this._offset = this.zip._offset
+    const filename = Buffer.from(this.filename, 'utf-8')
+    const buffer = Buffer.alloc(30 + filename.length)
 
     // local file header signature
-    buffer.writeInt32LE(0x04034b50, 0);
+    buffer.writeInt32LE(0x04034b50, 0)
     // version needed to extract
-    buffer.writeUInt16LE(0x1314, 4);
+    buffer.writeUInt16LE(0x1314, 4)
     // general purpose bit flag
-    buffer.writeUInt16LE(0x0008, 6); // Use data descriptor
+    buffer.writeUInt16LE(0x0008, 6) // Use data descriptor
     // compression method
-    buffer.writeUInt16LE(0x0008, 8); // DEFLATE
+    buffer.writeUInt16LE(0x0008, 8) // DEFLATE
     // last mod file time
-    buffer.writeUInt16LE(getTimePart(this.modified), 10);
+    buffer.writeUInt16LE(getTimePart(this.modified), 10)
     // last mod file date
-    buffer.writeUInt16LE(getDatePart(this.modified), 12);
+    buffer.writeUInt16LE(getDatePart(this.modified), 12)
     // crc-32
-    buffer.writeInt32LE(0, 14);
+    buffer.writeInt32LE(0, 14)
     // compressed size
-    buffer.writeInt32LE(0, 18);
+    buffer.writeInt32LE(0, 18)
     // uncompressed size
-    buffer.writeInt32LE(0, 22);
+    buffer.writeInt32LE(0, 22)
     // file name length
-    buffer.writeUInt16LE(filename.length, 26);
+    buffer.writeUInt16LE(filename.length, 26)
     // extra field length
-    buffer.writeUInt16LE(0x0000, 28);
+    buffer.writeUInt16LE(0x0000, 28)
     // file name (variable size)
-    filename.copy(buffer, 30);
+    filename.copy(buffer, 30)
     // extra field (variable size)
 
-    this._wroteHeader = true;
-    this.zip._writeBuffer(buffer);
+    this._wroteHeader = true
+    this.zip._writeBuffer(buffer)
   }
 
   /**
    * This is called in two cases:
    * - End of file, write the data descriptor and move on
    * - This file is now active, flush any open buffers
-   * 
+   *
    * If the file is still open for writing, flush any buffers.
-   * 
+   *
    * If the file is closed, flush any buffers, write data descriptor and move to
    * the next file.
-   * 
+   *
    * @memberof File
    */
-  _flush() {
+  _flush () {
     // Did we write the headers already? If not, start there.
-    if (!this._wroteHeader) this._writeLocalFileHeader();
+    if (!this._wroteHeader) this._writeLocalFileHeader()
 
     // Is anything buffered? If so, flush it out to output stream and recurse.
     if (this._buffers) {
-      for (const i in this._buffers) this._deflate.write(this._buffers[i]);
-      this._buffers = [];
+      for (const i in this._buffers) this._deflate.write(this._buffers[i])
+      this._buffers = []
     }
 
     // Are we done writing to this file? Flush the deflated stream,
     // which triggers writing file descriptor.
-    if (!this.writable) this._deflate.end();
+    if (!this.writable) this._deflate.end()
   }
 
   /**
    * Called when we're done writing the deflated file, takes care of writing data
    * descriptor and activating the next file.
-   * 
+   *
    * @memberof File
    */
-  _doneWritingFile() {
-    this._done = true;
-    this._writeDataDescriptor();
-    debug('Finished writing', this.filename);
-    this.emit('close');
-    this.zip.nextActive();
+  _doneWritingFile () {
+    this._done = true
+    this._writeDataDescriptor()
+    debug('Finished writing', this.filename)
+    this.emit('close')
+    this.zip.nextActive()
   }
 
   /**
    * Write file descriptor at end of file, and then make the next file active.
-   * 
+   *
    * @memberof File
    */
-  _writeDataDescriptor() {
+  _writeDataDescriptor () {
     // Write data descriptor at end of file: this is used for data we can only
     // determine after processing file (CRC, length).
-    const buffer = Buffer.alloc(16);
-    buffer.writeInt32LE(0x08074b50, 0);
-    buffer.writeInt32LE(this._crc ^ -1, 4);
+    const buffer = Buffer.alloc(16)
+    buffer.writeInt32LE(0x08074b50, 0)
+    buffer.writeInt32LE(this._crc ^ -1, 4)
     // compressed size
-    buffer.writeInt32LE(this._compressedLength, 8);
+    buffer.writeInt32LE(this._compressedLength, 8)
     // uncompressed size
-    buffer.writeInt32LE(this._uncompressedLength, 12);
-    this.zip._writeBuffer(buffer);
+    buffer.writeInt32LE(this._uncompressedLength, 12)
+    this.zip._writeBuffer(buffer)
   }
 }
-
-module.exports = File;
