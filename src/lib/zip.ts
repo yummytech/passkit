@@ -13,7 +13,7 @@
 
 import { EventEmitter } from 'events'
 import { File } from './zip-file'
-import { getTimePart, getDatePart } from './get-part-time'
+import { getDatePart, getTimePart } from './get-part-time'
 
 const debug = console.log
 // const debug = () => {}

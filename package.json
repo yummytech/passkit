@@ -12,10 +12,8 @@
   "devDependencies": {
     "@destinationstransfers/eslint-config": "^1.0.2",
     "@types/jest": "^20.0.8",
-    "@types/mocha": "^2.2.43",
     "@types/node": "^8.0.28",
     "jest": "^21.1.0",
-    "mocha": "^3.5.3",
     "remark-cli": "^4.0.0",
     "remark-preset-lint-consistent": "^2.0.1",
     "remark-preset-lint-recommended": "^3.0.1",

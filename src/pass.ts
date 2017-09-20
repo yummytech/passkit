@@ -17,15 +17,9 @@ import { Fields } from './lib/fields'
 import { signManifest } from './lib/signManifest-forge'
 import * as includes from 'array-includes'
 
-const {
-  TOP_LEVEL_FIELDS,
-  IMAGES,
-  STRUCTURE_FIELDS,
-  TRANSIT,
-  PASS_MIME_TYPE
-} = require('./constants')
+import * as constants from './constants'
 
-const REQUIRED_IMAGES = entries(IMAGES)
+const REQUIRED_IMAGES = entries(constants.IMAGES)
   .filter(([, { required }]) => required)
   .map(([imageType]) => imageType)
 
@@ -35,26 +29,12 @@ const REQUIRED_IMAGES = entries(IMAGES)
 // fields    - Pass fields (description, serialNumber, logoText)
 export class Pass extends EventEmitter {
   localizations: {}
-  images: PassImages
-  primaryFields: any
-  passTypeIdentifier: string
-  // The pass’s type identifier.
-  serialNumber: string
-  teamIdentifier: string
-  description: string
-  backgroundColor: any
-  labelColor: any
-  foregroundColor: any
-  logoText: any
-  organizationName: any
-  groupingIdentifier: any
-  suppressStripShine: any
-  webServiceURL: any
-  authenticationToken: any
-  headerFields: any
-  private structure: any
-  constructor (public template, public fields: Fields, images) {
+  structure: any
+
+  constructor (public template, public fields = {} as any, public images: PassImages) {
     super()
+
+    this.fields = Object.assign({}, fields)
     // Structure is basically reference to all the fields under a given style
     // key, e.g. if style is coupon then structure.primaryFields maps to
     // fields.coupon.primaryFields.
@@ -75,7 +55,7 @@ export class Pass extends EventEmitter {
     //
     //   pass.description("Unbelievable discount");
     //   console.log(pass.description());
-    entries(TOP_LEVEL_FIELDS).forEach(([key, { type }]) => {
+    entries(constants.TOP_LEVEL_FIELDS).forEach(([key, { type }]) => {
       if (typeof this[key] !== 'function') {
         this[key] = v => {
           if (arguments) { // eslint-disable-line
@@ -96,7 +76,7 @@ export class Pass extends EventEmitter {
     //
     //   pass.headerFields.add("time", "The Time", "10:00AM");
     //   pass.backFields.add("url", "Web site", "http://example.com");
-    STRUCTURE_FIELDS.forEach(key => {
+    constants.STRUCTURE_FIELDS.forEach(key => {
       if (!(key in this)) {
         Object.defineProperty(this, key, {
           writable: false,
@@ -108,7 +88,6 @@ export class Pass extends EventEmitter {
 
     Object.preventExtensions(this)
   }
-
   /**
    * Returns normalized geopoint object from geoJSON, {lat, lng} or {lattitude,longutude,altitude}
    *
@@ -163,7 +142,7 @@ export class Pass extends EventEmitter {
       if (this.template.style !== 'boardingPass') {
         throw new Error('transitType field is only allowed at boarding passes')
       }
-      if (!values(TRANSIT).includes(v)) {
+      if (!values(constants.TRANSIT).includes(v)) {
         throw new Error(`Unknown value ${v} for transit type`)
       }
       this.structure.transitType = v
@@ -274,12 +253,12 @@ export class Pass extends EventEmitter {
       // Barcodes dictionary: https://developer.apple.com/library/content/documentation/UserExperience/Reference/PassKit_Bundle/Chapters/LowerLevel.html#//apple_ref/doc/uid/TP40012026-CH3-SW3
       v.forEach(barcode => {
         if (
-          !includes([
-            'PKBarcodeFormatQR',
-            'PKBarcodeFormatPDF417',
-            'PKBarcodeFormatAztec',
-            'PKBarcodeFormatCode128'
-          ], barcode.format)
+            !includes([
+              'PKBarcodeFormatQR',
+              'PKBarcodeFormatPDF417',
+              'PKBarcodeFormatAztec',
+              'PKBarcodeFormatCode128'
+            ], barcode.format)
         ) {
           throw new Error(`Barcode format value ${barcode.format} is invalid!`)
         }
@@ -303,18 +282,18 @@ export class Pass extends EventEmitter {
   addLocalization (lang, values) {
     // map, escaping the " symbol
     this.localizations[lang] =
-      (lang in this.localizations ? `${this.localizations[lang]}\n` : '') +
-      entries(values)
-        .map(
-          ([originalStr, translatedStr]) =>
-            `"${originalStr}" = "${translatedStr.replace(/"/g, '\\"')}";`
-        )
-        .join('\n')
+        (lang in this.localizations ? `${this.localizations[lang]}\n` : '') +
+          entries(values)
+            .map(
+                ([originalStr, translatedStr]) =>
+                    `"${originalStr}" = "${translatedStr.replace(/"/g, '\\"')}";`
+            )
+            .join('\n')
   }
 
   // Validate pass, throws error if missing a mandatory top-level field or image.
   validate () {
-    entries(TOP_LEVEL_FIELDS).some(([field, { required }]) => {
+    entries(constants.TOP_LEVEL_FIELDS).some(([field, { required }]) => {
       if (required && !(field in this.fields)) {
         throw new Error(`Missing field ${field}`)
       }
@@ -341,28 +320,28 @@ export class Pass extends EventEmitter {
 
     // validate color fields
     // valid values must be like rgb(123, 2, 22)
-    Object.keys(TOP_LEVEL_FIELDS)
-      .filter(v => v.endsWith('Color'))
-      .filter(v => v in this.fields)
-      .forEach(colorFieldName => {
-        const value = this.fields[colorFieldName]
-        try {
-          /^rgb\(\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\s*\)$/
-            .exec(value)
-            .slice(1)
-            .map(v => parseInt(v, 10))
-            .some(v => {
-              if (isNaN(v) || v < 0 || v > 255) {
-                throw new Error(`Invalid color value ${value}`)
-              }
-              return false
-            })
-        } catch (e) {
-          throw new Error(
-            `Color value "${value}" for field "${colorFieldName}" is invalid, must be an rgb(...)`
-          )
-        }
-      })
+    Object.keys(constants.TOP_LEVEL_FIELDS)
+        .filter(v => v.endsWith('Color'))
+        .filter(v => v in this.fields)
+        .forEach(colorFieldName => {
+          const value = this.fields[colorFieldName]
+          try {
+            /^rgb\(\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\s*\)$/
+                .exec(value)
+                .slice(1)
+                .map(v => parseInt(v, 10))
+                .some(v => {
+                  if (isNaN(v) || v < 0 || v > 255) {
+                    throw new Error(`Invalid color value ${value}`)
+                  }
+                  return false
+                })
+          } catch (e) {
+            throw new Error(
+                `Color value "${value}" for field "${colorFieldName}" is invalid, must be an rgb(...)`
+            )
+          }
+        })
 
     REQUIRED_IMAGES.some(image => {
       if (!this.images.map.has(image)) {
@@ -374,8 +353,7 @@ export class Pass extends EventEmitter {
 
   // Returns the pass.json object (not a string).
   getPassJSON () {
-    // return Object.assign({}, this.fields, { formatVersion: 1 })
-    return this.fields
+    return Object.assign({}, this.fields, { formatVersion: 1 })
   }
 
   /**
@@ -412,7 +390,7 @@ export class Pass extends EventEmitter {
      * @returns {SHAWriteStream}
      */
     const addFile = filename =>
-      new SHAWriteStream(manifest, filename, zip.addFile(filename))
+        new SHAWriteStream(manifest, filename, zip.addFile(filename))
 
     const doneWithImages = () => {
       if (lastError) {
@@ -449,8 +427,8 @@ export class Pass extends EventEmitter {
     this.images.map.forEach((imageVariants, imageType) => {
       imageVariants.forEach((file, density) => {
         const filename = `${imageType}${density !== '1x'
-          ? `@${density}`
-          : ''}.png`
+            ? `@${density}`
+            : ''}.png`
         pipeIntoStream(addFile(filename), file, error => {
           --expecting
           if (error) lastError = error
@@ -470,7 +448,7 @@ export class Pass extends EventEmitter {
    */
   render (response) {
     return new Promise((resolve, reject) => {
-      response.setHeader('Content-Type', PASS_MIME_TYPE)
+      response.setHeader('Content-Type', constants.PASS_MIME_TYPE)
       this.on('error', reject)
       this.on('end', resolve)
       this.pipe(response)
@@ -504,16 +482,16 @@ export class Pass extends EventEmitter {
     // Create signature
     const identifier = this.template.passTypeIdentifier().replace(/^pass./, '')
     signManifest(
-      Path.resolve(this.template.keysPath, `${identifier}.pem`),
-      this.template.password,
-      json,
-      (error, signature) => {
-        if (!error) {
-          // Write signature file
-          zip.addFile('signature').end(signature)
+        Path.resolve(this.template.keysPath, `${identifier}.pem`),
+        this.template.password,
+        json,
+        (error, signature) => {
+          if (!error) {
+            // Write signature file
+            zip.addFile('signature').end(signature)
+          }
+          callback(error)
         }
-        callback(error)
-      }
     )
   }
 }

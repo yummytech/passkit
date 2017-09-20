@@ -80,7 +80,7 @@ export const PASS_STYLES = [
 // Optional top level fields
 // Top-level pass fields.
 // https://developer.apple.com/library/content/documentation/UserExperience/Reference/PassKit_Bundle/Chapters/TopLevel.html#//apple_ref/doc/uid/TP40012026-CH2-SW1
-const TOP_LEVEL_FIELDS = {
+export const TOP_LEVEL_FIELDS = {
   // Standard Keys
   description: {
     required: true,

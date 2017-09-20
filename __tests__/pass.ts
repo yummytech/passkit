@@ -1,14 +1,20 @@
 'use strict'
+
 import * as Crypto from 'crypto'
+
 import { execFile } from 'child_process'
-import { Template } from '../src/template'
-import * as constants from '../src/constants'
-import { Pass } from '../src/pass'
-import { Fields } from '../src/lib/fields'
+
+import * as File from 'fs'
+
+import * as path from 'path'
 
 import { Readable } from 'stream'
-import * as File from 'fs'
-import * as path from 'path'
+
+import { Template } from '../src/template'
+
+import * as constants from '../src/constants'
+
+import { Pass } from '../src/pass'
 // Clone all the fields in object, except the named field, and return a new
 // object.
 //
@@ -25,28 +31,32 @@ function cloneExcept (object, field) {
 function unzip (zipFile, filename) {
   return new Promise(resolve => {
     execFile(
-      'unzip',
-      ['-p', zipFile, filename],
-      { encoding: 'binary' },
-      (error, stdout) => {
-        if (error) {
-          throw new Error(stdout.toString())
-        } else {
-          resolve(Buffer.from(stdout.toString(), 'binary'))
+        'unzip',
+        ['-p', zipFile, filename],
+        { encoding: 'binary' },
+        (error, stdout) => {
+          if (error) {
+            // throw new Error(stdout)
+          } else {
+            resolve(Buffer.from(stdout.toString(), 'binary'))
+            // resolve(stdout)
+          }
         }
-      }
     )
   })
 }
-const pass = { structure: {} }
-const fields = new Fields(pass, 'headerFields')
-// should not add empty arrays if not needed
-fields.add('passTypeIdentifier', 'passTypeIdentifier', 'pass.com.fastlane.flomio')
-fields.add('teamIdentifier', 'teamIdentifier', 'MXL')
-fields.add('labelColor', 'labelColor', 'red')
 
-const template = new Template('coupon', fields)
-template.keys(`${__dirname}/../keys`, 'secret')
+let template = new Template('coupon', {
+  passTypeIdentifier: 'pass.com.fastlane.flomio',
+  teamIdentifier: 'MXL',
+  labelColor: 'red'
+})
+template.keys(`${__dirname}/../keys`, 'flomio')
+const fields = {
+  serialNumber: '123456',
+  organizationName: 'Acme flowers',
+  description: '20% of black roses'
+}
 
 describe('Pass', () => {
   test('from template', () => {
@@ -85,7 +95,7 @@ describe('Pass', () => {
     })
 
     expect(() => Pass.getGeoPoint({ lat: 1, log: 3 })).toThrow(
-      'Unknown geopoint format'
+        'Unknown geopoint format'
     )
   })
 
@@ -93,13 +103,13 @@ describe('Pass', () => {
   test('barcodes as Array', () => {
     const pass = template.createPass(cloneExcept(fields, 'serialNumber'))
     expect(() =>
-      pass.barcodes([
-        {
-          format: 'PKBarcodeFormatQR',
-          message: 'Barcode message',
-          messageEncoding: 'iso-8859-1'
-        }
-      ])
+        pass.barcodes([
+          {
+            format: 'PKBarcodeFormatQR',
+            message: 'Barcode message',
+            messageEncoding: 'iso-8859-1'
+          }
+        ])
     ).not.toThrow()
     expect(() => pass.barcodes('byaka')).toThrow()
   })
@@ -142,7 +152,7 @@ describe('Pass', () => {
 
   test('boarding pass has string-only property in sctructure fields', async () => {
     const templ = await Template.load(
-      path.resolve(__dirname, './resources/passes/BoardingPass.pass/')
+        path.resolve(__dirname, './resources/passes/BoardingPass.pass/')
     )
     expect(templ.style).toBe('boardingPass')
     // switching transit type
@@ -150,9 +160,9 @@ describe('Pass', () => {
     expect(pass.transitType()).toBe(constants.TRANSIT.AIR)
     pass.transitType(constants.TRANSIT.BUS)
     expect(pass.transitType()).toBe(constants.TRANSIT.BUS)
-    expect(pass.getPassJSON()).toHaveProperty(
-      'transitType',
-      constants.TRANSIT.BUS
+    expect(pass.getPassJSON().boardingPass).toHaveProperty(
+        'transitType',
+        constants.TRANSIT.BUS
     )
   })
 
@@ -185,105 +195,106 @@ describe('Pass', () => {
   })
 })
 
-describe('generated', () => {
-  const pass = template.createPass(fields)
+  describe('generated', () => {
+    const pass = template.createPass(fields)
 
-  beforeAll(async () => {
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 100000
-    await pass.images.loadFromDirectory(path.resolve(__dirname, './resources'))
-    pass.headerFields.add('date', 'Date', 'Nov 1')
-    pass.primaryFields.add([
+    beforeAll(async () => {
+      jasmine.DEFAULT_TIMEOUT_INTERVAL = 100000
+      await pass.images.loadFromDirectory(path.resolve(__dirname, './resources'))
+      pass.headerFields.add('date', 'Date', 'Nov 1')
+      pass.primaryFields.add([
       { key: 'location', label: 'Place', value: 'High ground' }
-    ])
-    if (File.existsSync('/tmp/pass.pkpass')) {
-      File.unlinkSync('/tmp/pass.pkpass')
-    }
-    const file = File.createWriteStream('/tmp/pass.pkpass')
-    await new Promise(resolve => {
-      pass.pipe(file)
-      pass.on('end', resolve)
-      pass.on('error', err => {
-        throw err
+      ])
+      if (File.existsSync('/tmp/pass.pkpass')) {
+        File.unlinkSync('/tmp/pass.pkpass')
+      }
+      const file = File.createWriteStream('/tmp/pass.pkpass')
+      await new Promise(resolve => {
+        pass.pipe(file)
+        pass.on('end', resolve)
+        pass.on('error', err => {
+          throw err
+        })
       })
     })
-  })
 
-  test('should be a valid ZIP', done => {
-    execFile('unzip', ['-t', '/tmp/pass.pkpass'], (error, stdout) => {
-      if (error) throw new Error(stdout)
-      expect(stdout).toContain('No errors detected in compressed data')
-      done(error)
+    test('should be a valid ZIP', done => {
+      execFile('unzip', ['-t', '/tmp/pass.pkpass'], (error, stdout) => {
+        if (error) throw new Error(stdout)
+        expect(stdout).toContain('No errors detected in compressed data')
+        done(error)
+      })
+    })
+
+    test('should contain pass.json', async () => {
+      const res = JSON.parse(await unzip('/tmp/pass.pkpass', 'pass.json'))
+
+      expect(res).toMatchObject({
+        passTypeIdentifier: 'pass.com.fastlane.flomio',
+        teamIdentifier: 'MXL',
+        serialNumber: '123456',
+        organizationName: 'Acme flowers',
+        description: '20% of black roses',
+        coupon: {
+          headerFields: [
+            {
+              key: 'date',
+              label: 'Date',
+              value: 'Nov 1'
+            }
+          ],
+          primaryFields: [
+            {
+              key: 'location',
+              label: 'Place',
+              value: 'High ground'
+            }
+          ]
+        },
+        formatVersion: 1
+      })
+    })
+
+    test('should contain a manifest', async () => {
+      const res = JSON.parse(await unzip('/tmp/pass.pkpass', 'manifest.json'))
+      expect(res).toMatchObject({
+        'pass.json': expect.any(String), // '87c2bd96d4bcaf55f0d4d7846a5ae1fea85ea628',
+        'icon.png': 'e0f0bcd503f6117bce6a1a3ff8a68e36d26ae47f',
+        'icon@2x.png': '10e4a72dbb02cc526cef967420553b459ccf2b9e',
+        'logo.png': 'abc97e3b2bc3b0e412ca4a853ba5fd90fe063551',
+        'logo@2x.png': '87ca39ddc347646b5625062a349de4d3f06714ac',
+        'strip.png': '68fc532d6c76e7c6c0dbb9b45165e62fbb8e9e32',
+        'strip@2x.png': '17e4f5598362d21f92aa75bc66e2011a2310f48e',
+        'thumbnail.png': 'e199fc0e2839ad5698b206d5f4b7d8cb2418927c',
+        'thumbnail@2x.png': 'ac640c623741c0081fb1592d6353ebb03122244f'
+      })
+    })
+
+  // this test depends on MacOS specific signpass, so, run only on MacOS
+    if (process.platform === 'darwin') {
+      test('should contain a signature', done => {
+        execFile(
+          path.resolve(__dirname, './resources/bin/signpass'),
+          ['-v', '/tmp/pass.pkpass'],
+          (error, stdout) => {
+            expect(stdout).toContain('*** SUCCEEDED ***')
+            done()
+          }
+      )
+      })
+    }
+
+    test('should contain the icon', async () => {
+      const buffer = await unzip('/tmp/pass.pkpass', 'icon.png')
+      expect(Crypto.createHash('sha1').update(buffer).digest('hex')).toBe(
+        'e0f0bcd503f6117bce6a1a3ff8a68e36d26ae47f'
+    )
+    })
+
+    test('should contain the logo', async () => {
+      const buffer = await unzip('/tmp/pass.pkpass', 'logo.png')
+      expect(Crypto.createHash('sha1').update(buffer).digest('hex')).toBe(
+        'abc97e3b2bc3b0e412ca4a853ba5fd90fe063551'
+    )
     })
   })
-
-  // test('should contain pass.json', async () => {
-  //   const res = JSON.parse(await unzip('/tmp/pass.pkpass', 'pass.json'))
-  //   expect(res).toMatchObject({
-  //     passTypeIdentifier: 'pass.com.fastlane.flomio',
-  //     teamIdentifier: 'MXL',
-  //     serialNumber: '123456',
-  //     organizationName: 'Acme flowers',
-  //     description: '20% of black roses',
-  //     coupon: {
-  //       headerFields: [
-  //         {
-  //           key: 'date',
-  //           label: 'Date',
-  //           value: 'Nov 1'
-  //         }
-  //       ],
-  //       primaryFields: [
-  //         {
-  //           key: 'location',
-  //           label: 'Place',
-  //           value: 'High ground'
-  //         }
-  //       ]
-  //     },
-  //     formatVersion: 1
-  //   })
-  // })
-  //
-  // test('should contain a manifest', async () => {
-  //   const res = JSON.parse(await unzip('/tmp/pass.pkpass', 'manifest.json'))
-  //   expect(res).toMatchObject({
-  //     'pass.json': expect.any(String), // '87c2bd96d4bcaf55f0d4d7846a5ae1fea85ea628',
-  //     'icon.png': 'e0f0bcd503f6117bce6a1a3ff8a68e36d26ae47f',
-  //     'icon@2x.png': '10e4a72dbb02cc526cef967420553b459ccf2b9e',
-  //     'logo.png': 'abc97e3b2bc3b0e412ca4a853ba5fd90fe063551',
-  //     'logo@2x.png': '87ca39ddc347646b5625062a349de4d3f06714ac',
-  //     'strip.png': '68fc532d6c76e7c6c0dbb9b45165e62fbb8e9e32',
-  //     'strip@2x.png': '17e4f5598362d21f92aa75bc66e2011a2310f48e',
-  //     'thumbnail.png': 'e199fc0e2839ad5698b206d5f4b7d8cb2418927c',
-  //     'thumbnail@2x.png': 'ac640c623741c0081fb1592d6353ebb03122244f'
-  //   })
-  // })
-  //
-  // // this test depends on MacOS specific signpass, so, run only on MacOS
-  // if (process.platform === 'darwin') {
-  //   test('should contain a signature', done => {
-  //     execFile(
-  //       path.resolve(__dirname, './resources/bin/signpass'),
-  //       ['-v', '/tmp/pass.pkpass'],
-  //       (error, stdout) => {
-  //         expect(stdout).toContain('*** SUCCEEDED ***')
-  //         done()
-  //       }
-  //     )
-  //   })
-  // }
-  //
-  // test('should contain the icon', async () => {
-  //   const buffer = await unzip('/tmp/pass.pkpass', 'icon.png')
-  //   expect(Crypto.createHash('sha1').update(buffer).digest('hex')).toBe(
-  //     'e0f0bcd503f6117bce6a1a3ff8a68e36d26ae47f'
-  //   )
-  // })
-  //
-  // test('should contain the logo', async () => {
-  //   const buffer = await unzip('/tmp/pass.pkpass', 'logo.png')
-  //   expect(Crypto.createHash('sha1').update(buffer).digest('hex')).toBe(
-  //     'abc97e3b2bc3b0e412ca4a853ba5fd90fe063551'
-  //   )
-  // })
-})

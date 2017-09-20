@@ -10,15 +10,12 @@ import * as URL from 'url-parse'
 import { readFile, stat } from 'fs'
 import * as promisify from 'es6-promisify'
 import * as colorString from 'color-string'
-import * as apn from '@destinationstransfers/apn'
 import { PassImages } from './lib/images'
 import { Pass } from './pass'
-import { Fields } from './lib/fields'
 import { PASS_STYLES } from './constants'
 
 import * as entries from 'object.entries'
 import * as includes from 'array-includes'
-import * as path from 'path'
 import { join } from 'path'
 
 const readFileAsync = promisify(readFile)
@@ -29,13 +26,18 @@ const statAsync = promisify(stat)
 // style  - Pass style (coupon, eventTicket, etc)
 // fields - Pass fields (passTypeIdentifier, teamIdentifier, etc)
 export class Template {
-  [x: string]: any;
+  images: PassImages
   password: any
-  private keysPath: string
-  constructor (public style, public fields: Fields) {
+  keysPath: string
+  private apn: any
+
+  constructor (public style, public fields = {} as any) {
     if (!includes(PASS_STYLES, style)) {
       throw new Error(`Unsupported pass style ${style}`)
     }
+
+    this.style = style
+    this.fields = {}
     // we will set all fields via class setters, as in the future we will implement strict validators
     // values validation: https://developer.apple.com/library/content/documentation/UserExperience/Reference/PassKit_Bundle/Chapters/TopLevel.html
     entries(fields).forEach(([field, value]) => {
@@ -52,14 +54,6 @@ export class Template {
     this.images = new PassImages()
     Object.preventExtensions(this)
   }
-
-  static convertToRgb (value) {
-    const rgb = colorString.get.rgb(value)
-    if (rgb === null) throw new Error(`Invalid color value ${value}`)
-    // convert to rgb(), stripping alpha channel
-    return colorString.to.rgb(rgb.slice(0, 3))
-  }
-
   /**
    * Loads Template, images and key from a given path
    *
@@ -70,16 +64,17 @@ export class Template {
    * @throws - if given folder doesn't contain pass.json or it is's in invalid format
    * @memberof Template
    */
-  static async load (folderPath: string, keyPassword?: string) {
+  static async load (folderPath, keyPassword?) {
     // Check if the path is accessible directory actually
     const stats = await statAsync(folderPath)
     if (!stats.isDirectory()) {
-      throw new Error(`Path ${folderPath} must be a directory!`)
+      throw new Error('No template folder found')
     }
 
     // getting main JSON file
     const passJson = JSON.parse(
-        await readFileAsync.join(folderPath, 'pass.json'))
+        await readFileAsync(join(folderPath, 'pass.json'))
+    )
 
     // Trying to detect the type of pass
     let type
@@ -107,13 +102,29 @@ export class Template {
       const keyStat = await statAsync(join(folderPath, keyName))
       if (keyStat.isFile()) template.keys(folderPath, keyPassword)
     } catch (_) {
-      // throw new Error('Unknown pass style!')
+      // throw new Error(`keyStat is undefined!`)
     } // eslint-disable-line
 
     // done
     return template
   }
-  // public pushUpdates (pushToken) {
+  /**
+   * Validates if given string is a correct color value for Pass fields
+   *
+   * @static
+   * @param {string} value - a CSS color value, like 'red', '#fff', etc
+   * @throws - if value is invalid this function will throw
+   * @returns {string} - value converted to "rgb(222, 33, 22)" string
+   * @memberof Template
+   */
+  static convertToRgb (value) {
+    const rgb = colorString.get.rgb(value)
+    if (rgb === null) throw new Error(`Invalid color value ${value}`)
+    // convert to rgb(), stripping alpha channel
+    return colorString.to.rgb(rgb.slice(0, 3))
+  }
+
+  // pushUpdates (pushToken) {
   //   if (!this.apn) {
   //     // creating APN Provider
   //     const identifier = this.passTypeIdentifier().replace(/^pass./, '')
@@ -132,7 +143,7 @@ export class Template {
   //   return this.apn.send(note, pushToken)
   // }
 
-  passTypeIdentifier (v?) {
+  passTypeIdentifier (v) {
     if (arguments.length === 1) {
       this.fields.passTypeIdentifier = v
       return this

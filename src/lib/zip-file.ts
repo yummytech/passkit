@@ -7,9 +7,9 @@
 
 import * as stream from 'stream'
 import { createDeflateRaw } from 'zlib'
-import { getTimePart, getDatePart } from './get-part-time'
+import { getDatePart, getTimePart } from './get-part-time'
 
-const debug = console.log
+// const debug = console.log
 // const debug = () => {}
 
 // prettier-ignore
@@ -63,10 +63,18 @@ const CRC32 = [0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706
 // filename - Filename
 // modified - Modified date (optional)
 export class File extends stream {
-  constructor (zip, filename, modified) {
+  _deflate: any
+  _offset: number
+  _done: boolean
+  _wroteHeader: boolean
+  _buffers: any[]
+  writable: boolean
+  private _crc: number
+  private _uncompressedLength: number
+  private _compressedLength: number
+
+  constructor (public zip, public filename, public modified) {
     super()
-    this.zip = zip
-    this.filename = filename
     this.modified = modified || new Date()
     // True while file is writeable (end/destroy change this)
     this.writable = true
@@ -104,11 +112,11 @@ export class File extends stream {
    * @memberof File
    */
   write (buffer, encoding = 'utf8') {
-    debug('Writing', this.filename)
+    // debug('Writing', this.filename)
     if (!this.writable) throw new Error('This file no longer open for writing')
     const buf =
       typeof buffer === 'string' || buffer instanceof String
-        ? Buffer.from(buffer, encoding)
+        ? Buffer.from(buffer as string, encoding)
         : buffer
 
     // crc-32
@@ -154,7 +162,7 @@ export class File extends stream {
    * @memberof File
    */
   _writeLocalFileHeader () {
-    debug('Started writing', this.filename)
+    // debug('Started writing', this.filename)
     this._offset = this.zip._offset
     const filename = Buffer.from(this.filename, 'utf-8')
     const buffer = Buffer.alloc(30 + filename.length)
@@ -225,7 +233,7 @@ export class File extends stream {
   _doneWritingFile () {
     this._done = true
     this._writeDataDescriptor()
-    debug('Finished writing', this.filename)
+    // debug('Finished writing', this.filename)
     this.emit('close')
     this.zip.nextActive()
   }

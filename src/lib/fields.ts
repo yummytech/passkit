@@ -29,7 +29,7 @@ export class Fields {
   barcodes: any[]
   authenticationToken: any
   coupon: any
-  eventTicket: any;
+  eventTicket: any
   // A value that uniquely identifies the pass.
   // should copy template fields
 
