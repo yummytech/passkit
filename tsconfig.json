@@ -1,10 +1,16 @@
 {
   "compilerOptions": {
     "target": "es5",
+    "lib": ["dom", "es6"],
+    "importHelpers": true,
+    "listEmittedFiles": true,
+    "noImplicitAny": false,
+    "declaration": true,
     "module": "commonjs",
-    "allowJs" : true,
+    "moduleResolution": "node",
     "outDir" : "./dist"
   },
+  "include": ["src/**/*.ts"],
   "types": [
     "node"
   ]
