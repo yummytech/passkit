@@ -1,10 +1,8 @@
 "use strict";
-function __export(m) {
-    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
-}
 Object.defineProperty(exports, "__esModule", { value: true });
-var template_1 = require("./src/template");
+var tslib_1 = require("tslib");
+var template_1 = require("./template");
 exports.Template = template_1.Template;
-var pass_1 = require("./src/pass");
+var pass_1 = require("./pass");
 exports.Pass = pass_1.Pass;
-__export(require("./src/constants"));
+tslib_1.__exportStar(require("./constants"), exports);
