@@ -7,3 +7,4 @@ test.js
 coverage/*
 *.pem
 *.p12
+.idea
