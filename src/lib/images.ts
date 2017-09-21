@@ -9,8 +9,6 @@ import * as promisify from 'es6-promisify'
 import { basename, extname, resolve } from 'path'
 // Supported images.
 import * as constants from '../constants'
-import * as async from 'asyncawait/async'
-import * as await from 'asyncawait/await'
 
 const readdirAsync = promisify(readdir)
 const statAsync = promisify(stat)

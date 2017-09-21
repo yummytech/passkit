@@ -30,6 +30,11 @@ const REQUIRED_IMAGES = entries(constants.IMAGES)
 export class Pass extends EventEmitter {
   localizations: {}
   structure: any
+  auxiliaryFields: Fields
+  backFields: Fields
+  headerFields: Fields
+  primaryFields: Fields
+  secondaryFields: Fields
 
   constructor (public template, public fields = {} as any, public images: PassImages) {
     super()
@@ -47,17 +52,14 @@ export class Pass extends EventEmitter {
     // For localizations support
     this.localizations = {}
 
-    // Accessor methods for top-level fields (description, serialNumber, logoText,
-    // etc).
-    //
-    // Call with an argument to set field and return self, call with no argument to
-    // get field value.
-    //
-    //   pass.description("Unbelievable discount");
-    //   console.log(pass.description());
-    entries(constants.TOP_LEVEL_FIELDS).forEach(([key, { type }]) => {
+    // Accessor methods for top-level fields (description, serialNumber,
+    // logoText, etc).  Call with an argument to set field and return self,
+    // call with no argument to get field value.
+    // pass.description("Unbelievable discount");
+    // console.log(pass.description());
+    entries(constants.TOP_LEVEL_FIELDS).forEach(([key, {type}]) => {
       if (typeof this[key] !== 'function') {
-        this[key] = v => {
+        this[key] = function set (v) {
           if (arguments) { // eslint-disable-line
             if (type === Array && !Array.isArray(v)) {
               throw new Error(`${key} must be an Array!`)
@@ -67,6 +69,7 @@ export class Pass extends EventEmitter {
           }
           return this.fields[key]
         }
+
       }
     })
 
@@ -89,15 +92,17 @@ export class Pass extends EventEmitter {
     Object.preventExtensions(this)
   }
   /**
-   * Returns normalized geopoint object from geoJSON, {lat, lng} or {lattitude,longutude,altitude}
+   * Returns normalized geopoint object from geoJSON, {lat, lng} or
+   * {lattitude,longutude,altitude}
    *
-   * @param {number[] | { lat: number, lng: number, alt?: number } | { longitude: number, latitude: number, altitude?: number }} point
+   * @param {number[] | { lat: number, lng: number, alt?: number } | {
+   *     longitude: number, latitude: number, altitude?: number }} point
    * @returns {{ longitude: number, latitude: number, altitude: number }}
    * @throws on unknown point format
    * @memberof Pass
    */
   static getGeoPoint (point) {
-    if (!point) throw new Error("Can't get coordinates from undefined")
+    if (!point) throw new Error('Can\'t get coordinates from undefined')
 
     // GeoJSON Array [longitude, latitude(, elevation)]
     if (Array.isArray(point)) {
@@ -169,7 +174,8 @@ export class Pass extends EventEmitter {
   }
 
   /**
-   *  Indicates that the pass is void—for example, a one time use coupon that has been redeemed.
+   *  Indicates that the pass is void—for example, a one time use coupon that
+   * has been redeemed.
    *
    * @param {boolean} v
    * @returns {Pass | boolean}
@@ -185,8 +191,9 @@ export class Pass extends EventEmitter {
   }
 
   /**
-   * Date and time when the pass becomes relevant. For example, the start time of a movie.
-   * Recommended for event tickets and boarding passes; otherwise optional.
+   * Date and time when the pass becomes relevant. For example, the start time
+   * of a movie. Recommended for event tickets and boarding passes; otherwise
+   * optional.
    *
    * @param {string | Date} v - value to set
    * @returns {Pass | string}
@@ -202,8 +209,9 @@ export class Pass extends EventEmitter {
   }
 
   /**
-   * Maximum distance in meters from a relevant latitude and longitude that the pass is relevant.
-   * This number is compared to the pass’s default distance and the smaller value is used.
+   * Maximum distance in meters from a relevant latitude and longitude that the
+   * pass is relevant. This number is compared to the pass’s default distance
+   * and the smaller value is used.
    *
    * @param {number} v - distance in meters
    * @returns {Pass | number}
@@ -225,7 +233,8 @@ export class Pass extends EventEmitter {
   /**
    * Adds a location where a pass is relevant.
    *
-   * @param {number[] | { lat: number, lng: number, alt?: number } | { longitude: number, latitude: number, altitude?: number }} point
+   * @param {number[] | { lat: number, lng: number, alt?: number } | {
+   *     longitude: number, latitude: number, altitude?: number }} point
    * @param {string} relevantText
    * @returns {Pass}
    * @memberof Pass
@@ -245,12 +254,14 @@ export class Pass extends EventEmitter {
   /**
    * Gets or sets Pass barcodes field
    *
-   * @param {Array.<{format: string, message: string, messageEncoding: string}>} v
+   * @param {Array.<{format: string, message: string, messageEncoding:
+   *     string}>} v
    */
   barcodes (v?) {
     if (arguments.length === 1) {
       if (!Array.isArray(v)) throw new Error('barcodes must be an Array!')
-      // Barcodes dictionary: https://developer.apple.com/library/content/documentation/UserExperience/Reference/PassKit_Bundle/Chapters/LowerLevel.html#//apple_ref/doc/uid/TP40012026-CH3-SW3
+      // Barcodes dictionary:
+      // https://developer.apple.com/library/content/documentation/UserExperience/Reference/PassKit_Bundle/Chapters/LowerLevel.html#//apple_ref/doc/uid/TP40012026-CH3-SW3
       v.forEach(barcode => {
         if (
             !includes([
@@ -291,7 +302,8 @@ export class Pass extends EventEmitter {
             .join('\n')
   }
 
-  // Validate pass, throws error if missing a mandatory top-level field or image.
+  // Validate pass, throws error if missing a mandatory top-level field or
+  // image.
   validate () {
     entries(constants.TOP_LEVEL_FIELDS).some(([field, { required }]) => {
       if (required && !(field in this.fields)) {

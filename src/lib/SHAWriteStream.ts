@@ -27,8 +27,9 @@ export class SHAWriteStream extends Writable {
     this.sha.update(buffer, encoding)
     return true
   }
-// The implementation:
-  end (chunk: any, encoding?: string, cb?: Function) {
+
+  // The implementation:
+  end (chunk?: any, encoding?: string | Function, cb?: Function) {
     if (chunk) this.write(chunk, encoding)
     this.output.end()
     this.manifest[this.filename] = this.sha.digest('hex')

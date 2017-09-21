@@ -24,8 +24,9 @@ describe('PassImages', () => {
     const img = new PassImages()
     await img.loadFromDirectory(path.resolve(__dirname, '../images/'))
     expect(img.map.size).toBe(6)
+
     // ensure it loaded all dimensions for all images
-    for (const variations of img.map.values()) {
+    for (const variations of (img.map as any).values()) {
       expect(variations).toBeInstanceOf(Map)
       expect(variations.size).toBe(3)
     }
